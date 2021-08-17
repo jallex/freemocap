@@ -86,7 +86,7 @@ def PlaySkeletonAnimation(
         skel_dottos = matplotlib_artist_objs['skel_dottos'] 
         skel_trajectories = figure_data['skel_trajectories|mar|fr_dim']
 
-        if useDLC:
+        if session.useDLC:
             dlc_dottos = matplotlib_artist_objs['dlc_dottos'] 
             dlc_trajectories = figure_data['dlc_trajectories|mar|fr_dim']
 
@@ -113,19 +113,29 @@ def PlaySkeletonAnimation(
         update_3d_skel_segments('lHand', skel_fr_mar_dim)
         update_3d_skel_segments('face', skel_fr_mar_dim)
 
-        update_3d_skel_segments('pinkBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('redBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('greenBall', dlc_fr_mar_dim)
-        update_3d_skel_segments('wobbleBoard', dlc_fr_mar_dim)
-        update_3d_skel_segments('wobbleWheel', dlc_fr_mar_dim)
+        if session.useDLC:
 
-        for bb in range(3):
-            thisTailArtist = matplotlib_artist_objs['ball_tails'][bb]
-           
-            thisTailArtist.set_data((dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 0], 
-                                    dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 1])) 
+            update_3d_skel_segments('pinkBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('redBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('greenBall', dlc_fr_mar_dim)
+            update_3d_skel_segments('wobbleBoard', dlc_fr_mar_dim)
+            update_3d_skel_segments('wobbleWheel', dlc_fr_mar_dim)
 
-            thisTailArtist.set_3d_properties(dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 2]) 
+            for bb in range(3):
+                thisTailArtist = matplotlib_artist_objs['ball_tails'][bb]
+            
+                thisTailArtist.set_data((dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 0], 
+                                        dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 1])) 
+
+                thisTailArtist.set_3d_properties(dlc_trajectories[bb][frameNum-ballTailLen:frameNum+1, 2]) 
+
+                #dlc data
+            marNum = -1
+            for thisDotto, thisTraj in zip(dlc_dottos,dlc_trajectories):
+                marNum+=1
+                # NOTE: there is no .set_data() for 3 dim data...
+                thisDotto.set_data(thisTraj[ frameNum, 0:2])
+                thisDotto.set_3d_properties(thisTraj[ frameNum, 2])
 
 
         #Plots the dots!
@@ -137,13 +147,7 @@ def PlaySkeletonAnimation(
             thisSkelDotto.set_data(thisTraj[ frameNum, 0:2])
             thisSkelDotto.set_3d_properties(thisTraj[ frameNum, 2])
 
-        #dlc data
-        marNum = -1
-        for thisDotto, thisTraj in zip(dlc_dottos,dlc_trajectories):
-            marNum+=1
-            # NOTE: there is no .set_data() for 3 dim data...
-            thisDotto.set_data(thisTraj[ frameNum, 0:2])
-            thisDotto.set_3d_properties(thisTraj[ frameNum, 2])
+
         
         # function to update the lines for each body segment
         def update_2d_skel_segments(vidNum,key):       
@@ -254,7 +258,7 @@ def PlaySkeletonAnimation(
             pass
         else:
             for dim in range(skel_fr_mar_dim.shape[2]):
-                skel_fr_mar_dim[:,mm,dim] = savgol_filter(skel_fr_mar_dim[:,mm,dim], 5, 3)
+                skel_fr_mar_dim[:,mm,dim] = savgol_filter(np.nan_to_num(skel_fr_mar_dim[:,mm,dim], 5, 3))
 
     figure_data = dict()
 
@@ -263,21 +267,21 @@ def PlaySkeletonAnimation(
     figure_data['skel_fr_mar_dim'] = skel_fr_mar_dim
     dict_of_openPoseSegmentIdx_dicts, dict_of_skel_lineColor = formatOpenPoseStickIndices() #these will help us draw body and hands stick figures
 
-    if useDLC:
+    if session.useDLC:
         dlc_fr_mar_dim = np.load(session.dataArrayPath / "deepLabCut_3d.npy")
         dlcData_nCams_nFrames_nImgPts_XYC = np.load(session.dataArrayPath / "deepLabCutData_2d.npy")
         
         for mm in range(dlc_fr_mar_dim.shape[1]):
             for dim in range(dlc_fr_mar_dim.shape[2]):
-                dlc_fr_mar_dim[:,mm,dim] = savgol_filter(dlc_fr_mar_dim[:,mm,dim], 11, 3)
+                dlc_fr_mar_dim[:,mm,dim] = savgol_filter(np.nan_to_num(dlc_fr_mar_dim[:,mm,dim], 11, 3))
 
         ballTailLen = 6
         if ballTailLen > startFrame:
             startFrame = ballTailLen+1 #gotta do this, or the tail will index negative frames (without requiring annoying checks later)
-    
-    dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
-    figure_data['dlc_trajectories|mar|fr_dim'] = dlc_trajectories
-    figure_data['dlc_fr_mar_dim'] = dlc_fr_mar_dim
+        
+        dlc_trajectories = [dlc_fr_mar_dim[:,markerNum,:] for markerNum in range(dlc_fr_mar_dim.shape[1])]    
+        figure_data['dlc_trajectories|mar|fr_dim'] = dlc_trajectories
+        figure_data['dlc_fr_mar_dim'] = dlc_fr_mar_dim
 
     
     
@@ -350,20 +354,21 @@ def PlaySkeletonAnimation(
     matplotlib_artist_objs['lHand'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['lHand'], segColor=np.append(humon_blue, 1), markerType='.', markerEdgeColor = humon_blue, lineWidth=1, marSize = 2)
     matplotlib_artist_objs['face'] = build_3d_segment_artist_dict(skel_fr_mar_dim, dict_of_openPoseSegmentIdx_dicts['face'], segColor='k', lineWidth=.5)
     
-    dict_of_dlcSegmentIdx_dicts = dict()
-    dict_of_dlcSegmentIdx_dicts['pinkBall'] = {'pinkBall': [0]}
-    dict_of_dlcSegmentIdx_dicts['greenBall'] = {'greenBall': [1]}
-    dict_of_dlcSegmentIdx_dicts['redBall'] = {'redBall': [2]}
-    dict_of_dlcSegmentIdx_dicts['wobbleBoard'] = {'wobbleboard':[3,4,5,6,3,7,5,4,7,6]}
-    dict_of_dlcSegmentIdx_dicts['wobbleWheel'] = {'wobbleWheel':[8,9]}
-    
-    ballColor = ['darkviolet', 'forestgreen', 'xkcd:goldenrod']
-    matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
-    matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
-    matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
+    if session.useDLC:
+        dict_of_dlcSegmentIdx_dicts = dict()
+        dict_of_dlcSegmentIdx_dicts['pinkBall'] = {'pinkBall': [0]}
+        dict_of_dlcSegmentIdx_dicts['greenBall'] = {'greenBall': [1]}
+        dict_of_dlcSegmentIdx_dicts['redBall'] = {'redBall': [2]}
+        dict_of_dlcSegmentIdx_dicts['wobbleBoard'] = {'wobbleboard':[3,4,5,6,3,7,5,4,7,6]}
+        dict_of_dlcSegmentIdx_dicts['wobbleWheel'] = {'wobbleWheel':[8,9]}
+        
+        ballColor = ['darkviolet', 'forestgreen', 'xkcd:goldenrod']
+        matplotlib_artist_objs['pinkBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['pinkBall'], segColor=ballColor[0], markerType = 'o', marSize = 6, markerEdgeColor = 'indigo')
+        matplotlib_artist_objs['redBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['redBall'], segColor=ballColor[2], markerType = 'o', marSize = 6, markerEdgeColor ='orangered')
+        matplotlib_artist_objs['greenBall'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['greenBall'], segColor=ballColor[1], markerType = 'o', marSize = 6, markerEdgeColor ='darkgreen')
 
-    matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
-    matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleBoard'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleBoard'], segColor='k', lineWidth=1)
+        matplotlib_artist_objs['wobbleWheel'] = build_3d_segment_artist_dict(dlc_fr_mar_dim, dict_of_dlcSegmentIdx_dicts['wobbleWheel'], segColor='k', lineWidth=1)
 
     skel_dottos = []
     for mm in range(67): #getcher dottos off my face!
@@ -383,13 +388,15 @@ def PlaySkeletonAnimation(
 
     matplotlib_artist_objs['skel_dottos'] = skel_dottos
 
-    matplotlib_artist_objs['dlc_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'b.', markersize=1)[0] for thisTraj in dlc_trajectories]
+    if session.useDLC:
 
-    matplotlib_artist_objs['ball_tails'] = [ax3d.plot( 
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 0],
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 1],
-                                            dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 2],
-                                            '-', color=ballColor[bb])[0] for bb in range(3)]
+        matplotlib_artist_objs['dlc_dottos'] = [ax3d.plot(thisTraj[0, 0:1], thisTraj[1, 0:1], thisTraj[2, 0:1],'b.', markersize=1)[0] for thisTraj in dlc_trajectories]
+
+        matplotlib_artist_objs['ball_tails'] = [ax3d.plot( 
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 0],
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 1],
+                                                dlc_trajectories[bb][startFrame-ballTailLen:startFrame, 2],
+                                                '-', color=ballColor[bb])[0] for bb in range(3)]
     
 
     numFrames = skel_fr_mar_dim.shape[0]
@@ -440,8 +447,9 @@ def PlaySkeletonAnimation(
     
     if useCams: #JSM NOTE _ This might not work at all lol 
         syncedVidPathList = [syncedVidPathListAll[camNum] for camNum in useCams]
-        dlcData_nCams_nFrames_nImgPts_XYC = dlcData_nCams_nFrames_nImgPts_XYC[useCams, :, :, :]
         openPoseData_nCams_nFrames_nImgPts_XYC = openPoseData_nCams_nFrames_nImgPts_XYC[useCams, :, :, :]
+        if session.useDLC:
+            dlcData_nCams_nFrames_nImgPts_XYC = dlcData_nCams_nFrames_nImgPts_XYC[useCams, :, :, :]
     else:
         syncedVidPathList  = syncedVidPathListAll.copy()
 
@@ -593,9 +601,11 @@ def PlaySkeletonAnimation(
     lHandX = skel_trajectories[7][:,0]
     lHandY = -skel_trajectories[7][:,1]
 
-    ballX_1 = dlc_trajectories[2][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
-    ballY_1 = -dlc_trajectories[2][:lHandX.shape[0],1]
-    ballLineColor_1 = ballColor[2]
+    if session.useDLC:
+
+        ballX_1 = dlc_trajectories[2][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
+        ballY_1 = -dlc_trajectories[2][:lHandX.shape[0],1]
+        ballLineColor_1 = ballColor[2]
 
     # ballX_2 = dlc_trajectories[1][:lHandX.shape[0],0] #NOTE - Why tf aren't these the same length already?!?
     # ballY_2 = -dlc_trajectories[1][:lHandX.shape[0],1]

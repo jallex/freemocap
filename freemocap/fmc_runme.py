@@ -261,45 +261,61 @@ def Run(sessionID=None,
         playWin = PlayerDockedWindow(sesh,displayVid)
         playWin.animate()
 
-    # %% Stage Seven
+
+
     if stage <= 7:
-        print('Starting Skeleton Plotting')
-        playskeleton.ReplaySkeleton_matplotlib(
-                                    sesh,
-                                    vidType=1,
-                                    startFrame=40,
-                                    azimuth=-90, 
-                                    elevation=-80,
-                                    useOpenPose=sesh.useOpenPose,
-                                    useMediaPipe=sesh.useMediaPipe,
-                                    useDLC=sesh.useDLC)
-        # fmc_pyqtgraph.PlaySkeleton(
-        #                             sesh,
-        #                             vidType=1,
-        #                             startFrame=40,
-        #                             azimuth=-90, 
-        #                             elevation=-80,
-        #                             useOpenPose=useOpenPose,
-        #                             useMediaPipe=useMediaPipe,
-        #                             useDLC=useDLC)
+        print('Starting Animation')
+        play_skeleton_animation.PlaySkeletonAnimation(
+                            sesh,
+                            vidType=1,
+                            startFrame=40,
+                            azimuth=-90, 
+                            elevation=-80,
+                            numCams = 4,
+                            useOpenPose=sesh.useOpenPose,
+                            useMediaPipe=sesh.useMediaPipe,
+                            useDLC=sesh.useDLC,
+                            recordVid = False)
+                            
+    # # # %% Stage Seven
+    # if stage <= 7:
+    #     print('Starting Skeleton Plotting')
+    #     playskeleton.ReplaySkeleton_matplotlib(
+    #                                 sesh,
+    #                                 vidType=1,
+    #                                 startFrame=40,
+    #                                 azimuth=-90, 
+    #                                 elevation=-80,
+    #                                 useOpenPose=sesh.useOpenPose,
+    #                                 useMediaPipe=sesh.useMediaPipe,
+    #                                 useDLC=sesh.useDLC)
+    #     # fmc_pyqtgraph.PlaySkeleton(
+    #     #                             sesh,
+    #     #                             vidType=1,
+    #     #                             startFrame=40,
+    #     #                             azimuth=-90, 
+    #     #                             elevation=-80,
+    #     #                             useOpenPose=useOpenPose,
+    #     #                             useMediaPipe=useMediaPipe,
+    #     #                             useDLC=useDLC)
 
-        # playSkel = PlaySkeleton(sesh)
-        # playSkel.animate()
-        #playWin =PlayerDockedWindow(sesh)
-        #playWin.animate()
+    #     # playSkel = PlaySkeleton(sesh)
+    #     # playSkel.animate()
+    #     #playWin =PlayerDockedWindow(sesh)
+    #     #playWin.animate()
 
-    else:
-        print('Skipping Skeleton Plotting')
+    # else:
+    #     print('Skipping Skeleton Plotting')
 
 
 
     ## JSM NOTE: Deprecated by 'play_skeleton_animation.py' (also, we don't need the 'imOut' folder anymore)
     # %% Stage Eight
-    if stage <= 8:
-        print()
-        print('Starting Video Creation')
-        createvideo.createVideo(sesh)
-    else:
-        print('Skipping Video Creation')
+    # if stage <= 8:
+    #     print()
+    #     print('Starting Video Creation')
+    #     createvideo.createVideo(sesh)
+    # else:
+    #     print('Skipping Video Creation')
         
 
